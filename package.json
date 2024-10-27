@@ -8,10 +8,6 @@
     "start": "node ./src/main.js",
     "stop": "echo 'No need to stop as PM2 is not in use'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/micheleriva/fulltext-search-with-node-and-elasticsearch-on-docker.git"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
