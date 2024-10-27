@@ -1,100 +1,69 @@
-const { Client } = require("@elastic/elasticsearch");
-                   require("dotenv").config();
+import { Client } from "@elastic/elasticsearch";
+import dotenv from "dotenv";
+dotenv.config();
 
 const elasticUrl = process.env.ELASTIC_URL || "http://localhost:9200";
-const esclient   = new Client({ node: elasticUrl });
-const index      = "quotes";
-const type       = "quotes";
+const esclient = new Client({ node: elasticUrl });
+const songsIndex = "songs"; // Index for songs
 
-/**
- * @function createIndex
- * @returns {void}
- * @description Creates an index in ElasticSearch.
- */
+// Exporting esclient and songsIndex
+export { esclient, songsIndex, checkConnection, setSongsMapping, createIndex };
 
+// Functions for creating index, setting mapping, and checking connection
 async function createIndex(index) {
   try {
-
-    await esclient.indices.create({ index });
-    console.log(`Created index ${index}`);
-
+    const exists = await esclient.indices.exists({ index });
+    if (!exists.body) {
+      await esclient.indices.create({ index });
+      console.log(`Created index ${index}`);
+    } else {
+      console.log(`Index ${index} already exists.`);
+    }
   } catch (err) {
-
     console.error(`An error occurred while creating the index ${index}:`);
     console.error(err);
-
   }
 }
 
-/**
- * @function setQuotesMapping,
- * @returns {void}
- * @description Sets the quotes mapping to the database.
- */
-
-async function setQuotesMapping () {
+async function setSongsMapping() {
   try {
     const schema = {
-      quote: {
-        type: "text" 
+      properties: {
+        lyrics: { type: "text" },
+        title: { type: "text" },
       },
-      author: {
-        type: "text"
-      }
     };
-  
-    await esclient.indices.putMapping({ 
-      index, 
-      type,
-      include_type_name: true,
-      body: { 
-        properties: schema 
-      } 
-    })
-    
-    console.log("Quotes mapping created successfully");
-  
+
+    await esclient.indices.putMapping({
+      index: songsIndex,
+      body: schema,
+    });
+
+    console.log("Songs mapping created successfully");
   } catch (err) {
-    console.error("An error occurred while setting the quotes mapping:");
+    console.error("An error occurred while setting the songs mapping:");
     console.error(err);
   }
 }
 
-/**
- * @function checkConnection
- * @returns {Promise<Boolean>}
- * @description Checks if the client is connected to ElasticSearch
- */
-
-function checkConnection() {
-  return new Promise(async (resolve) => {
-
-    console.log("Checking connection to ElasticSearch...");
-    let isConnected = false;
-
-    while (!isConnected) {
-      try {
-
-        await esclient.cluster.health({});
-        console.log("Successfully connected to ElasticSearch");
-        isConnected = true;
-
-      // eslint-disable-next-line no-empty
-      } catch (_) {
-
-      }
-    }
-
-    resolve(true);
-
-  });
+async function checkConnection() {
+  console.log("Checking connection to Elasticsearch...");
+  try {
+    await esclient.cluster.health({});
+    console.log("Successfully connected to Elasticsearch");
+    return true;
+  } catch (err) {
+    console.error("Failed to connect to Elasticsearch:");
+    console.error(err);
+    return false;
+  }
 }
 
-module.exports = {
-  esclient,
-  setQuotesMapping,
-  checkConnection,
-  createIndex,
-  index,
-  type
-};
+// Main function to initialize the database connection
+(async function main() {
+  const isConnected = await checkConnection();
+  if (isConnected) {
+    await createIndex(songsIndex);
+    await setSongsMapping();
+  }
+})();

@@ -1,37 +1,31 @@
-const elastic = require("../elastic");
-const quotes  = require(`./quotes.json`);
+import { songsIndex as __index, esclient } from "../elastic.js";
+import songs from './songs.json' assert { type: 'json' };
 
-/**
- * @function createESAction
- * @returns {{index: { _index: string, _type: string }}}
- * @description Returns an ElasticSearch Action in order to
- *              correctly index documents.
- */
-
-const esAction = {
+const createESAction = (index) => ({
   index: {
-    _index: elastic.index,
-    _type: elastic.type
+    _index: index,
   }
-};
-
-/**
- * @function pupulateDatabase
- * @returns {void}
- */
+});
 
 async function populateDatabase() {
-
   const docs = [];
 
-  for (const quote of quotes) {
-    docs.push(esAction);
-    docs.push(quote);
+  for (const song of songs) {
+    docs.push(createESAction(__index)); // Create a new action for each song
+    docs.push({
+      lyrics: song.lyrics
+    });
   }
 
-  return elastic.esclient.bulk({ body: docs });
+  try {
+    const response = await esclient.bulk({ body: docs });
+    console.log(`Successfully indexed ${response.items.length} songs`);
+  } catch (err) {
+    console.error("An error occurred while populating the database:");
+    console.error(err);
+  }
 }
 
-module.exports = {
-  populateDatabase
+export default {
+  populateDatabase,
 };

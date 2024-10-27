@@ -1,10 +1,9 @@
-const express      = require("express");
-const cors         = require("cors");
-const bodyParser   = require("body-parser");
-const routes       = require("./routes");
-                     require("dotenv").config();
+import express, { urlencoded, json } from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config();
 
-const app  = express();
+const app = express();
 const port = process.env.NODE_PORT || 3000;
 
 /**
@@ -12,18 +11,18 @@ const port = process.env.NODE_PORT || 3000;
  * @returns {void}
  * @description Starts the HTTP Express server.
  */
-
 function start() {
+  app.use(cors());
+  app.use(urlencoded({ extended: false }));
+  app.use(json());
 
-  return  app.use(cors())
-             .use(bodyParser.urlencoded({ extended: false }))
-             .use(bodyParser.json())
-             .use("/quotes",routes)
-             .use((_req, res) => res.status(404).json({ success: false,error: "Route not found" }))
-             .listen(port, () => console.log(`Server ready on port ${port}`));
+  app.use((_req, res) =>
+    res.status(404).json({ success: false, error: "Route not found" })
+  );
 
+  app.listen(port, () => console.log(`Server ready on port ${port}`));
 }
 
-module.exports = {
-  start
+export default {
+  start,
 };

@@ -1,11 +1,12 @@
 {
   "name": "nodejselastic",
   "version": "1.0.0",
-  "description": "",
+  "type": "module",
+  "description": "This is the repository for [**Fulltext search with Node.js and ElasticSearch on Docker**](https://micheleriva.medium.com/full-text-search-with-node-js-and-elasticsearch-on-docker-edcea23612fd)",
   "main": "index.js",
   "scripts": {
-    "start": "pm2-runtime start ./src/main.js --name node_app",
-    "stop": "pm2-runtime stop node_app "
+    "start": "node ./src/main.js",
+    "stop": "echo 'No need to stop as PM2 is not in use'"
   },
   "repository": {
     "type": "git",
@@ -19,10 +20,10 @@
   },
   "homepage": "https://github.com/micheleriva/fulltext-search-with-node-and-elasticsearch-on-docker#readme",
   "dependencies": {
-    "@elastic/elasticsearch": "^7.3.0",
-    "body-parser": "^1.19.0",
+    "@elastic/elasticsearch": "^8.15.1",
+    "body-parser": "^1.20.3",
     "cors": "^2.8.5",
-    "dotenv": "^8.0.0",
-    "express": "^4.17.1"
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1"
   }
 }

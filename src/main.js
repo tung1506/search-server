@@ -1,20 +1,21 @@
-const elastic = require("./elastic");
-const server  = require("./server");
-const data    = require("./data");
-                require("dotenv").config();
+import { checkConnection, esclient, songsIndex as _index, createIndex, setSongsMapping } from "./elastic.js";
+import server from './server/index.js'; 
+import data from "./data/index.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 
 (async function main() {
 
-  const isElasticReady = await elastic.checkConnection();
+  const isElasticReady = await checkConnection();
 
   if (isElasticReady) {
 
-    const elasticIndex = await elastic.esclient.indices.exists({index: elastic.index});
+    const elasticIndex = await esclient.indices.exists({index: _index});
 
     if (!elasticIndex.body) {
-      await elastic.createIndex(elastic.index);
-      await elastic.setQuotesMapping();
+      await createIndex(_index);
+      await setSongsMapping();
       await data.populateDatabase()
     }
 
