@@ -13,6 +13,9 @@ async function populateDatabase() {
   for (const song of songs) {
     docs.push(createESAction(__index)); // Create a new action for each song
     docs.push({
+      song: song.song,
+      artists: song.artists,
+      link: song.link,
       lyrics: song.lyrics
     });
   }

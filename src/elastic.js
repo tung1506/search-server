@@ -4,47 +4,9 @@ dotenv.config();
 
 const elasticUrl = process.env.ELASTIC_URL || "http://localhost:9200";
 const esclient = new Client({ node: elasticUrl });
-const songsIndex = "songs"; // Index for songs
+const songsIndex = "songs";
 
-// Exporting esclient and songsIndex
-export { esclient, songsIndex, checkConnection, setSongsMapping, createIndex };
-
-// Functions for creating index, setting mapping, and checking connection
-async function createIndex(index) {
-  try {
-    const exists = await esclient.indices.exists({ index });
-    if (!exists.body) {
-      await esclient.indices.create({ index });
-      console.log(`Created index ${index}`);
-    } else {
-      console.log(`Index ${index} already exists.`);
-    }
-  } catch (err) {
-    console.error(`An error occurred while creating the index ${index}:`);
-    console.error(err);
-  }
-}
-
-async function setSongsMapping() {
-  try {
-    const schema = {
-      properties: {
-        lyrics: { type: "text" },
-        title: { type: "text" },
-      },
-    };
-
-    await esclient.indices.putMapping({
-      index: songsIndex,
-      body: schema,
-    });
-
-    console.log("Songs mapping created successfully");
-  } catch (err) {
-    console.error("An error occurred while setting the songs mapping:");
-    console.error(err);
-  }
-}
+export { esclient, songsIndex, checkConnection, createSongsIndex };
 
 async function checkConnection() {
   console.log("Checking connection to Elasticsearch...");
@@ -53,17 +15,109 @@ async function checkConnection() {
     console.log("Successfully connected to Elasticsearch");
     return true;
   } catch (err) {
-    console.error("Failed to connect to Elasticsearch:");
-    console.error(err);
+    console.error("Failed to connect to Elasticsearch:", err);
     return false;
   }
 }
 
-// Main function to initialize the database connection
+async function createSongsIndex() {
+  const settings = {
+    settings: {
+      analysis: {
+        analyzer: {
+          custom_lowercase_analyzer: {
+            type: "custom",
+            tokenizer: "standard",
+            filter: ["lowercase", "punctuation_remover", "my_stemmer"],
+          },
+          artist_analyzer: {
+            type: "custom",
+            tokenizer: "comma_and_tokenizer",
+            filter: [
+              "lowercase",
+              "punctuation_remover",
+              "my_stemmer",
+              "remove_whitespace",
+              "asciifolding",
+            ],
+          },
+        },
+        tokenizer: {
+          comma_and_tokenizer: {
+            type: "pattern",
+            pattern: "[,\\&]",
+          },
+        },
+        filter: {
+          punctuation_remover: {
+            type: "pattern_replace",
+            pattern: "[\\p{Punct}]",
+            replacement: " ",
+          },
+          my_stemmer: {
+            type: "stemmer",
+            language: "english",
+          },
+          remove_whitespace: {
+            type: "pattern_replace",
+            pattern: "\\s+",
+            replacement: "",
+          },
+        },
+      },
+      similarity: {
+        custom_bm25: {
+          type: "BM25",
+          k1: 1.6,
+          b: 0.5,
+        },
+      },
+    },
+    mappings: {
+      properties: {
+        song: {
+          type: "text",
+          analyzer: "custom_lowercase_analyzer",
+          copy_to: "meta",
+        },
+        artists: {
+          type: "text",
+          analyzer: "artist_analyzer",
+          copy_to: "meta",
+        },
+        lyrics: {
+          type: "text",
+          analyzer: "custom_lowercase_analyzer",
+          similarity: "custom_bm25",
+        },
+        link: { type: "text", analyzer: "custom_lowercase_analyzer" },
+        meta: { type: "text", analyzer: "custom_lowercase_analyzer" },
+      },
+    },
+  };
+
+  try {
+    const exists = await esclient.indices.exists({ index: songsIndex });
+    if (exists.body) {
+      await esclient.indices.delete({ index: songsIndex });
+      console.log(`Deleted existing index ${songsIndex}`);
+    }
+
+    await esclient.indices.create({
+      index: songsIndex,
+      body: settings,
+    });
+
+    console.log(`Created new index ${songsIndex} with mappings and settings`);
+  } catch (err) {
+    console.error("Error creating index:", err);
+  }
+}
+
+
 (async function main() {
   const isConnected = await checkConnection();
   if (isConnected) {
-    await createIndex(songsIndex);
-    await setSongsMapping();
+    await createSongsIndex(songsIndex);
   }
 })();
