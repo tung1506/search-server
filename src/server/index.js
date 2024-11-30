@@ -1,6 +1,8 @@
 import express, { urlencoded, json } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import searchRoutes from "../routes/search.js";
+
 dotenv.config();
 
 const app = express();
@@ -15,6 +17,7 @@ function start() {
   app.use(cors());
   app.use(urlencoded({ extended: false }));
   app.use(json());
+  app.use("/api/songs", searchRoutes);
 
   app.use((_req, res) =>
     res.status(404).json({ success: false, error: "Route not found" })
