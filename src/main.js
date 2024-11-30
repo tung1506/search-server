@@ -13,7 +13,7 @@ dotenv.config();
 
     const elasticIndex = await esclient.indices.exists({index: _index});
 
-    if (!elasticIndex.body) {
+    if (!elasticIndex) {
       await data.populateDatabase()
     }
 

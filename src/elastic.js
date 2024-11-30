@@ -114,10 +114,10 @@ async function createSongsIndex() {
   }
 }
 
-
 (async function main() {
   const isConnected = await checkConnection();
-  if (isConnected) {
+  const isIndexExisted = await esclient.indices.exists({index: songsIndex});
+  if (isConnected && !isIndexExisted) {
     await createSongsIndex(songsIndex);
   }
 })();
