@@ -24,52 +24,30 @@ async function createSongsIndex() {
   const settings = {
     settings: {
       analysis: {
+        char_filter: {
+          remove_special_chars: {
+            type: "pattern_replace",
+            pattern: "[\\p{Punct}]", // Khớp với tất cả dấu câu, ký tự đặc biệt
+            replacement: " ",       // Thay thế bằng khoảng trắng
+          },
+        },
         analyzer: {
-          custom_lowercase_analyzer: {
+          custom_whitespace_analyzer: {
             type: "custom",
-            tokenizer: "standard",
-            filter: ["lowercase", "punctuation_remover", "my_stemmer"],
-          },
-          artist_analyzer: {
-            type: "custom",
-            tokenizer: "comma_and_tokenizer",
+            char_filter: ["remove_special_chars"], // Xử lý ký tự đặc biệt
+            tokenizer: "standard",              // Tách từ theo khoảng trắng
             filter: [
-              "lowercase",
-              "punctuation_remover",
-              "my_stemmer",
-              "remove_whitespace",
-              "asciifolding",
+              "lowercase",          // Chuyển thành chữ thường
+              "asciifolding",       // Loại bỏ dấu (é -> e)
             ],
-          },
-        },
-        tokenizer: {
-          comma_and_tokenizer: {
-            type: "pattern",
-            pattern: "[,\\&]",
-          },
-        },
-        filter: {
-          punctuation_remover: {
-            type: "pattern_replace",
-            pattern: "[\\p{Punct}]",
-            replacement: " ",
-          },
-          my_stemmer: {
-            type: "stemmer",
-            language: "english",
-          },
-          remove_whitespace: {
-            type: "pattern_replace",
-            pattern: "\\s+",
-            replacement: "",
           },
         },
       },
       similarity: {
         custom_bm25: {
           type: "BM25",
-          k1: 1.6,
-          b: 0.5,
+          k1: 1.2,
+          b: 0.75,
         },
       },
     },
@@ -77,21 +55,23 @@ async function createSongsIndex() {
       properties: {
         song: {
           type: "text",
-          analyzer: "custom_lowercase_analyzer",
+          analyzer: "custom_whitespace_analyzer",
+          similarity: "custom_bm25",
           copy_to: "meta",
         },
         artists: {
           type: "text",
-          analyzer: "artist_analyzer",
+          analyzer: "custom_whitespace_analyzer",
+          similarity: "custom_bm25",
           copy_to: "meta",
         },
         lyrics: {
           type: "text",
-          analyzer: "custom_lowercase_analyzer",
+          analyzer: "custom_whitespace_analyzer",
           similarity: "custom_bm25",
         },
-        link: { type: "text", analyzer: "custom_lowercase_analyzer" },
-        meta: { type: "text", analyzer: "custom_lowercase_analyzer" },
+        link: { type: "text", analyzer: "custom_whitespace_analyzer", similarity: "custom_bm25" },
+        meta: { type: "text", analyzer: "custom_whitespace_analyzer" },
       },
     },
   };
