@@ -1,7 +1,7 @@
 import { esclient, songsIndex } from "../elastic.js";
 
 // Search songs using query parameter
-export const searchSongs = async (req, res) => {
+export const search = async (req, res) => {
   const query = req.query.q;
 
   if (!query) {
@@ -13,25 +13,23 @@ export const searchSongs = async (req, res) => {
       multi_match: {
         query,
         fields: [
-          "meta^2.3",
-          "song^2.5",
-          "artists^2.2",
-          "lyrics^1.2",
-          "link^1",
-        ],
-        type: "best_fields",
-        operator: "or",
-        fuzziness: "AUTO",
+          "title^1.5",
+          "tenchude^1.5",
+          "Title^1.5",
+          "song^1.5",
+          "meta^1.2",
+          "Author^1.2",
+          "vietnamese_name^1.2",
+          "_all"
+        ]
       },
     },
-    size: 10,
-    _source: ["song", "artists", "link", "lyrics"],
+    size: 10
   };
 
   try {
     const result = await esclient.search({
-      index: songsIndex,
-      body: searchBody,
+      body: searchBody
     });
 
     return res.status(200).json(result.hits.hits);
