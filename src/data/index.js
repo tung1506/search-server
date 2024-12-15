@@ -9,25 +9,44 @@ async function loadJSON(filePath) {
   return JSON.parse(data);
 }
 
-// Lấy danh sách các file JSON (trừ `songs.json`)
+// Lấy danh sách các file JSON
 const jsonDirectory = "./src/data/";
 async function getJSONFiles() {
   const files = await fs.readdir(jsonDirectory);
-  return files.filter((file) => file.endsWith(".json") && file !== "songs.json");
+  return files.filter((file) => file.endsWith(".json"));
 }
 
 // Hàm để tự động sinh mapping từ dữ liệu mẫu
 function generateDynamicMapping(sampleData) {
   const properties = {};
 
-  for (const key of Object.keys(sampleData)) {
-    properties[key] = { type: "text", analyzer: "custom_whitespace_analyzer" };
+  for (let key of Object.keys(sampleData)) {
+    if (key === "hashtag") {
+      // Trường chính 'hashtag'
+      properties[key] = { 
+        type: "text", 
+        analyzer: "custom_whitespace_analyzer"
+      };
+      
+      // Thêm trường phụ 'suggest' cho 'hashtag' sử dụng custom_trigram_analyzer
+      properties[key].fields = {
+        suggest: {
+          type: "text",
+          analyzer: "custom_trigram_analyzer"
+        }
+      }
+    } else {
+      properties[key] = { 
+        type: "text", 
+        analyzer: "custom_whitespace_analyzer" 
+      };
+    }
+
     properties[key].similarity = "custom_bm25";
   }
-  
+
   return { properties };
 }
-
 
 // Tạo index động dựa trên tên file và dữ liệu mẫu
 async function createDynamicIndex(indexName, sampleData) {
@@ -42,24 +61,41 @@ async function createDynamicIndex(indexName, sampleData) {
         body: {
           settings: {
             analysis: {
+              filter: {
+                shingle: {
+                  type: "shingle",
+                  min_shingle_size: 2,
+                  max_shingle_size: 3
+                }
+              },
               char_filter: {
                 remove_special_chars: {
                   type: "pattern_replace",
-                  pattern: "[\\p{Punct}]", // Khớp với tất cả dấu câu, ký tự đặc biệt
-                  replacement: " ",       // Thay thế bằng khoảng trắng
+                  pattern: "[\\p{Punct}]",
+                  replacement: " ",
                 },
               },
               analyzer: {
                 custom_whitespace_analyzer: {
                   type: "custom",
-                  char_filter: ["remove_special_chars"], // Xử lý ký tự đặc biệt
-                  tokenizer: "standard",              // Tách từ theo khoảng trắng
+                  char_filter: ["remove_special_chars"],
+                  tokenizer: "standard",
                   filter: [
-                    "lowercase",          // Chuyển thành chữ thường
-                    "asciifolding",       // Loại bỏ dấu (é -> e)
+                    "lowercase",
+                    "asciifolding",
                     "word_delimiter"
                   ],
                 },
+                custom_trigram_analyzer: {
+                  type: "custom",
+                  char_filter: ["remove_special_chars"],
+                  tokenizer: "standard",
+                  filter: [
+                    "lowercase",
+                    "word_delimiter",
+                    "shingle"
+                  ],
+                }
               },
             },
             similarity: {
@@ -129,38 +165,6 @@ async function populateDatabase() {
     } catch (err) {
       console.error(`Error indexing data to ${indexName}:`, err);
     }
-  }
-
-  // Đặc biệt xử lý file songs.json
-  const songsFile = path.join(jsonDirectory, "songs.json");
-  const songsIndex = "songs";
-
-  if (existsSync(songsFile)) {
-    const songs = await loadJSON(songsFile);
-
-    const docs = [];
-    for (const song of songs) {
-      docs.push({
-        index: {
-          _index: songsIndex,
-        },
-      });
-      docs.push({
-        song: song.song,
-        artists: song.artists,
-        link: song.link,
-        lyrics: song.lyrics,
-      });
-    }
-
-    try {
-      const response = await esclient.bulk({ body: docs });
-      console.log(`Successfully indexed ${response.items.length} songs to ${songsIndex}`);
-    } catch (err) {
-      console.error("An error occurred while populating the songs database:", err);
-    }
-  } else {
-    console.warn(`File ${songsFile} does not exist.`);
   }
 }
 

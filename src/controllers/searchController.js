@@ -12,13 +12,11 @@ export const search = async (req, res) => {
     query: {
       multi_match: {
         query,
-        fields: [
-          "title^1.5",
-          "tenchude^1.5",
-          "Title^1.5",
-          "song^1.5",
-          "meta^1.2",
-          "Author^1.2",
+        "fields": [
+          "hashtag^1.4",
+          "tendemuc^1.4",
+          "tenchuong^1.4",
+          "tendieu^1.5",
           "vietnamese_name^1.2",
           "_all"
         ]

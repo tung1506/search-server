@@ -27,6 +27,7 @@ services:
     environment:
       - bootstrap.memory_lock=true
       - xpack.security.enabled=false
+      - action.destructive_requires_name=false
       - ES_JAVA_OPTS=-Xms2g -Xmx2g
       - discovery.type=single-node
     ports:
@@ -41,6 +42,7 @@ services:
     image: docker.elastic.co/kibana/kibana:8.7.0
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
     ports:
       - 5601:5601
     depends_on:
