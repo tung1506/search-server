@@ -20,33 +20,89 @@ async function getJSONFiles() {
 function generateDynamicMapping(sampleData) {
   const properties = {};
 
+  // Chuẩn hóa dữ liệu
+  sampleData = normalizeData(sampleData);
+
   for (let key of Object.keys(sampleData)) {
-    if (key === "hashtag") {
-      // Trường chính 'hashtag'
-      properties[key] = { 
-        type: "text", 
-        analyzer: "custom_whitespace_analyzer"
-      };
-      
-      // Thêm trường phụ 'suggest' cho 'hashtag' sử dụng custom_trigram_analyzer
-      properties[key].fields = {
-        suggest: {
-          type: "text",
-          analyzer: "custom_trigram_analyzer"
-        }
-      }
-    } else {
       properties[key] = { 
         type: "text", 
         analyzer: "custom_whitespace_analyzer" 
-      };
-    }
+      }
 
     properties[key].similarity = "custom_bm25";
   }
 
   return { properties };
 }
+
+function normalizeData(data) {
+  // Các key cần gộp vào hashtag
+  const keysToMerge = [
+    "tenchude", 
+    "tendemuc", 
+    "tenchuong", 
+    "tendieu", 
+    "scientific_name", 
+    "vietnamese_name", 
+    "other_names", 
+    "division", 
+    "division_description", 
+    "_class", 
+    "_class_description", 
+    "order", 
+    "order_description", 
+    "family", 
+    "family_description", 
+    "genus", 
+    "genus_description",
+    "song",
+    "artists",
+    "animalName",
+    "categories",
+    "blogName",
+    "tags",
+    "newsName",
+    "newsDescription",
+    "category",
+    "blogDescription",
+    "keywords"
+  ];
+  
+  let hashtagValue = "";
+
+  // Gộp giá trị của các trường cần thiết vào hashtag
+  for (let key of keysToMerge) {
+    if (data[key]) {
+      // Nếu giá trị là mảng, nối các phần tử lại thành chuỗi
+      if (Array.isArray(data[key])) {
+        const joinedValues = data[key]
+          .filter((item) => item) // Loại bỏ giá trị null/undefined trong mảng
+          .map((item) => item.trim()) // Loại bỏ khoảng trắng thừa ở mỗi phần tử
+          .join(", ");
+        hashtagValue += (hashtagValue ? ", " : "") + joinedValues;
+      }
+      // Nếu giá trị là chuỗi, thêm vào trực tiếp
+      else if (typeof data[key] === "string") {
+        hashtagValue += (hashtagValue ? ", " : "") + data[key].trim();
+      }
+    }
+  }
+
+  // Thêm trường hashtag mà không xóa các trường cũ
+  if (hashtagValue) {
+    data["hashtag"] = hashtagValue.toLowerCase(); // Chuyển hashtag thành chữ thường
+  }
+
+  // Chuẩn hóa giá trị của tất cả các trường (loại bỏ khoảng trắng thừa)
+  for (let key of Object.keys(data)) {
+    if (typeof data[key] === "string") {
+      data[key] = data[key].trim();
+    }
+  }
+
+  return data;
+}
+
 
 // Tạo index động dựa trên tên file và dữ liệu mẫu
 async function createDynamicIndex(indexName, sampleData) {
@@ -139,34 +195,41 @@ async function populateDatabase() {
       continue;
     }
 
-    const data = await loadJSON(filePath);
+    // Load dữ liệu gốc từ file JSON
+    const rawData = await loadJSON(filePath);
 
-    if (data.length > 0) {
-      const sampleData = data[0];
+    if (rawData.length > 0) {
+      // Normalize toàn bộ dữ liệu và thêm trường hashtag
+      const normalizedData = rawData.map((item) => normalizeData(item));
+
+      // Sử dụng dữ liệu mẫu để tạo dynamic index
+      const sampleData = normalizedData[0];
       await createDynamicIndex(indexName, sampleData);
+
+      // Chuẩn bị body để index bằng bulk API
+      const docs = [];
+      for (const item of normalizedData) {
+        docs.push({
+          index: {
+            _index: indexName,
+          },
+        });
+        docs.push(item); // Dữ liệu đã chuẩn hóa
+      }
+
+      try {
+        const response = await esclient.bulk({ body: docs });
+        console.log(`Successfully indexed ${response.items.length} items to ${indexName}`);
+      } catch (err) {
+        console.error(`Error indexing data to ${indexName}:`, err);
+      }
     } else {
       console.warn(`File ${jsonFile} is empty or invalid.`);
       continue;
     }
-
-    const docs = [];
-    for (const item of data) {
-      docs.push({
-        index: {
-          _index: indexName,
-        },
-      });
-      docs.push(item);
-    }
-
-    try {
-      const response = await esclient.bulk({ body: docs });
-      console.log(`Successfully indexed ${response.items.length} items to ${indexName}`);
-    } catch (err) {
-      console.error(`Error indexing data to ${indexName}:`, err);
-    }
   }
 }
+
 
 export default {
   populateDatabase,
