@@ -65,7 +65,9 @@ function normalizeData(data) {
     "newsDescription",
     "category",
     "blogDescription",
-    "keywords"
+    "keywords",
+    "poemName",
+    "Author"
   ];
   
   let hashtagValue = "";
