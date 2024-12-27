@@ -21,7 +21,7 @@ function generateDynamicMapping(sampleData) {
   const properties = {};
 
   // Chuẩn hóa dữ liệu
-  sampleData = normalizeData(sampleData);
+  // sampleData = normalizeData(sampleData);
 
   for (let key of Object.keys(sampleData)) {
       properties[key] = { 
@@ -119,13 +119,6 @@ async function createDynamicIndex(indexName, sampleData) {
         body: {
           settings: {
             analysis: {
-              filter: {
-                shingle: {
-                  type: "shingle",
-                  min_shingle_size: 2,
-                  max_shingle_size: 3
-                }
-              },
               char_filter: {
                 remove_special_chars: {
                   type: "pattern_replace",
@@ -141,17 +134,8 @@ async function createDynamicIndex(indexName, sampleData) {
                   filter: [
                     "lowercase",
                     "asciifolding",
-                    "word_delimiter"
-                  ],
-                },
-                custom_trigram_analyzer: {
-                  type: "custom",
-                  char_filter: ["remove_special_chars"],
-                  tokenizer: "standard",
-                  filter: [
-                    "lowercase",
                     "word_delimiter",
-                    "shingle"
+                    "word_delimiter_graph"
                   ],
                 }
               },
